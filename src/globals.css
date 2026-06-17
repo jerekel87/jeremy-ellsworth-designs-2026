@@ -1023,15 +1023,15 @@ html.je-anim .about__statement .word { opacity: 0.14; }
 .reviews__badges a:hover img { opacity: 1; }
 
 /* Reviews page — static grid (full text, no marquee) */
-.reviewgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(16px, 1.6vw, 22px); align-items: start; }
-.reviewgrid .review { width: auto; cursor: default; }
+.reviewgrid { column-count: 3; column-gap: clamp(16px, 1.6vw, 22px); }
+.reviewgrid .review { width: auto; cursor: default; break-inside: avoid; -webkit-column-break-inside: avoid; margin: 0 0 clamp(16px, 1.6vw, 22px); }
 .reviewgrid .review p { -webkit-line-clamp: unset; display: block; overflow: visible; }
 .review-proof { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 28px; }
 .review-proof__score { font-family: var(--font-display); font-weight: 900; font-size: 40px; line-height: 1; letter-spacing: -0.02em; }
 .review-proof__stars { color: var(--yellow); letter-spacing: 4px; font-size: 18px; }
 .review-proof__meta { color: var(--gray); font-size: 14.5px; max-width: 340px; line-height: 1.5; }
-@media (max-width: 1024px) { .reviewgrid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .reviewgrid { grid-template-columns: 1fr; } }
+@media (max-width: 1024px) { .reviewgrid { column-count: 2; } }
+@media (max-width: 600px) { .reviewgrid { column-count: 1; } }
 
 /* ============ Team ============ */
 .team { background: var(--surface); }
