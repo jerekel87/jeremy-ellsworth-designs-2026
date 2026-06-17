@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"components/next/SiteFx.jsx -> @/lib/initSite\":{\"id\":\"components/next/SiteFx.jsx -> @/lib/initSite\",\"files\":[\"static/chunks/_app-pages-browser_lib_initSite_js.js\"]}}"
