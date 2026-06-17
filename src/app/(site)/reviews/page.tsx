@@ -1,4 +1,5 @@
 import ReviewsView from "./ReviewsView";
+import "./reviews.css";
 import { fetchReviews } from "@/lib/reviewsApi";
 import { reviews as staticReviews } from "@/lib/reviews";
 import { resolveMetadata } from "@/lib/seo/metadata";
