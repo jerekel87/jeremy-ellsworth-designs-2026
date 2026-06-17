@@ -28,7 +28,7 @@ export default function Header() {
         <Link to="/about" data-cursor="hover">About</Link>
         <Link to="/work" data-cursor="hover">Work</Link>
         <Link to="/services" data-cursor="hover">Services</Link>
-        <a href="#reviews" data-cursor="hover">Reviews</a>
+        <Link to="/reviews" data-cursor="hover">Reviews</Link>
       </nav>
       <div className="header__actions">
         <Concierge />
@@ -47,7 +47,7 @@ export default function Header() {
       <Link to="/about">About</Link>
       <Link to="/work">Work</Link>
       <Link to="/services">Services</Link>
-      <a href="#reviews">Reviews</a>
+      <Link to="/reviews">Reviews</Link>
       <a href="#" data-drawer className="mobile-menu__cta">Get a Quote →</a>
     </nav>
     <div className="mobile-menu__foot">
