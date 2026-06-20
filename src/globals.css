@@ -295,6 +295,10 @@ ul, ol { list-style: none; }
   border-bottom: 1px solid var(--line); margin-bottom: 10px;
 }
 .heroB__booking-head em { font-style: normal; color: var(--yellow); }
+.heroB__image {
+  display: block; width: 100%; height: auto;
+  border-radius: 10px; object-fit: cover;
+}
 .heroB__booking-dot {
   width: 9px; height: 9px; border-radius: 50%; background: var(--yellow);
   animation: pulse 2s infinite;

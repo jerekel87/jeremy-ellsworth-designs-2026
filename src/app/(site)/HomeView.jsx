@@ -1,7 +1,6 @@
 "use client";
 import { Fragment } from "react";
 import { Link } from "@/components/next/Link";
-import CalEmbed from "@/components/CalEmbed";
 import Faq from "@/components/Faq";
 import ContactSection from "@/components/ContactSection";
 import { makeText } from "@/lib/pageText";
@@ -140,20 +139,12 @@ export default function HomeView({ content = {}, projects: projectsProp = [], re
 
         <div className="heroB__right" id="book">
           <div className="heroB__offset" aria-hidden="true"></div>
-          <div className="heroB__note" aria-hidden="true">
-            <span className="heroB__note-text">{t.isCustom("home.hero.note") ? t("home.hero.note") : <>it's free —<br/>grab a slot!</>}</span>
-            <svg className="heroB__note-arrow" viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M64 4 C84 28 76 50 34 62" stroke="#FFF600" strokeWidth="3.5" strokeLinecap="round"/>
-              <path d="M48 52 L30 64 L50 70" stroke="#FFF600" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
           <div className="heroB__booking">
-            <div className="heroB__booking-head">
-              <span className="heroB__booking-dot"></span>
-              <span>{t.isCustom("home.hero.booking") ? t("home.hero.booking") : <>Book your <em>free</em> design consultation</>}</span>
-            </div>
-            <CalEmbed />
-
+            <img
+              className="heroB__image"
+              src="/assets/img/work/high-caliber.jpg"
+              alt="Jeremy Ellsworth Designs branding and identity work"
+            />
           </div>
         </div>
       </div>
