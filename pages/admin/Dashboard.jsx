@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { geoAlbersUsa } from "d3-geo";
 import { TrafficChart, LiveSpark } from "@/components/cms/Charts";
 import UsLiveMap from "@/components/cms/UsLiveMap";
 import SearchExpand from "@/components/cms/SearchExpand";
@@ -9,6 +10,29 @@ import { useAnalytics } from "@/lib/analyticsApi";
 
 const STATUS_LABEL = { new: "New", replied: "Replied", booked: "Booked" };
 const DEV_CLASS = ["cms-live__dev--1", "cms-live__dev--2", "cms-live__dev--3"];
+
+// Must match the projection baked into lib/usMapPaths.js exactly (975x610 canvas).
+const mapProjection = geoAlbersUsa().scale(1300).translate([487.5, 305]);
+
+/* Project live lon/lat pins into canvas space so they sit on the baked US map.
+   Live pin shape: { state, at: [lon, lat], cities: [[name, lon, lat, n], ...] }.
+   Anything geoAlbersUsa can't place (outside the US) is dropped. */
+function projectPins(pins) {
+  const out = [];
+  for (const p of pins || []) {
+    const xy = mapProjection(p.at);
+    if (!xy) continue;
+    const cities = [];
+    let total = 0;
+    for (const [city, lon, lat, n] of p.cities || []) {
+      total += n;
+      const c = mapProjection([lon, lat]);
+      if (c) cities.push({ city, x: +c[0].toFixed(1), y: +c[1].toFixed(1), n });
+    }
+    out.push({ state: p.state, x: +xy[0].toFixed(1), y: +xy[1].toFixed(1), total, cities });
+  }
+  return out.sort((a, b) => b.total - a.total);
+}
 
 function LivePages({ rows }) {
   const max = rows.reduce((m, r) => Math.max(m, r.count), 0) || 1;
@@ -67,6 +91,7 @@ export default function Dashboard() {
   const liveCount = live?.count || 0;
   const devices = live?.devices || [];
   const hasTraffic = traffic.some((t) => t.visitors > 0);
+  const mapStates = useMemo(() => projectPins(live?.pins), [live?.pins]);
 
   const stats = [
     {
@@ -232,7 +257,7 @@ export default function Dashboard() {
               <h2>Live visitors — USA</h2>
               <span className="cms-panel__meta"><i className="cms-dot cms-dot--green"></i>{liveCount} active</span>
             </header>
-            <UsLiveMap pins={live?.pins || []} />
+            <UsLiveMap states={mapStates} />
           </section>
         </div>
       </div>

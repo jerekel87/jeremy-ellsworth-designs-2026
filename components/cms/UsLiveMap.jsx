@@ -1,118 +1,77 @@
-import { useMemo, useState } from "react";
-import { geoAlbersUsa, geoPath } from "d3-geo";
-import { feature, mesh } from "topojson-client";
-import statesTopo from "us-atlas/states-10m.json";
+import { useState } from "react";
+import { US_VIEWBOX, US_NATION_D, US_BORDERS_D } from "@/lib/usMapPaths";
 
-/* us-atlas TopoJSON is pre-projected to a 975x610 canvas using the standard
-   d3 geoAlbersUsa fit below. We reuse the exact same projection to place live
-   lon/lat pins on top of the baked nation + state borders. */
-const WIDTH = 975;
-const HEIGHT = 610;
-const projection = geoAlbersUsa().scale(1300).translate([WIDTH / 2, HEIGHT / 2]);
-const MAX_ZOOM = 4;
+const CX = 487.5, CY = 305;
+const K_MIN = 1, K_MAX = 8, K_STATE = 4.5;
+const K_CITY_MODE = 2.5; // past this zoom, dots break down into cities
 
-function useMapPaths() {
-  return useMemo(() => {
-    const path = geoPath();
-    const nation = feature(statesTopo, statesTopo.objects.nation);
-    const borders = mesh(statesTopo, statesTopo.objects.states, (a, b) => a !== b);
-    return { land: path(nation), borders: path(borders) };
-  }, []);
-}
+export default function UsLiveMap({ states = [] }) {
+  const [view, setView] = useState({ k: 1, x: CX, y: CY });
+  const [tip, setTip] = useState(null);
 
-/* Project each state pin (pin.at = state centroid) into canvas space and total
-   the city counts. Drop anything geoAlbersUsa can't place (outside the US). */
-function projectStates(pins) {
-  const out = [];
-  for (const p of pins || []) {
-    const xy = projection(p.at);
-    if (!xy) continue;
-    const cities = [];
-    let total = 0;
-    for (const [name, lon, lat, n] of p.cities || []) {
-      const c = projection([lon, lat]);
-      total += n;
-      if (c) cities.push({ key: `${name}-${lon}-${lat}`, name, x: c[0], y: c[1], n });
-    }
-    out.push({ key: p.state, state: p.state, x: xy[0], y: xy[1], total, cities });
+  function clampView(k, x, y) {
+    k = Math.min(K_MAX, Math.max(K_MIN, k));
+    const hw = CX / k, hh = CY / k;
+    x = Math.min(975 - hw, Math.max(hw, x));
+    y = Math.min(610 - hh, Math.max(hh, y));
+    return { k, x, y };
   }
-  return out.sort((a, b) => b.total - a.total);
-}
+  const apply = (next) => { setTip(null); setView(next); };
+  const zoom = (f) => apply(clampView(view.k * f, view.x, view.y));
+  const reset = () => apply({ k: 1, x: CX, y: CY });
 
-export default function UsLiveMap({ pins = [] }) {
-  const { land, borders } = useMapPaths();
-  const states = useMemo(() => projectStates(pins), [pins]);
-  const [zoom, setZoom] = useState(1);
-  const [open, setOpen] = useState(null);
+  const { k, x, y } = view;
+  const toScreen = (p) => [CX - k * x + k * p.x, CY - k * y + k * p.y];
 
-  const total = states.reduce((s, d) => s + d.total, 0);
-  const cx = WIDTH / 2;
-  const cy = HEIGHT / 2;
+  const cities = states.flatMap((s) => s.cities);
+  const cityMode = view.k >= K_CITY_MODE && cities.length > 0;
+  const maxState = Math.max(1, ...states.map((s) => s.total));
+  const maxCity = Math.max(1, ...cities.map((c) => c.n));
+  const total = states.reduce((sum, s) => sum + s.total, 0);
 
-  function zoomBy(factor) {
-    setZoom((z) => Math.min(MAX_ZOOM, Math.max(1, +(z * factor).toFixed(2))));
-  }
-  function reset() {
-    setZoom(1);
-    setOpen(null);
-  }
-
-  const inv = 1 / zoom;
+  const pins = cityMode
+    ? cities.map((c) => ({ ...c, label: `${c.city} — ${c.n} active`, r: 3 + (c.n / maxCity) * 3, onClick: () => apply(clampView(k, c.x, c.y)) }))
+    : states.map((s) => ({ ...s, n: s.total, label: `${s.state} — ${s.total} active`, r: 4.5 + (s.total / maxState) * 4, onClick: () => apply(clampView(K_STATE, s.x, s.y)) }));
 
   return (
     <div className="cms-map">
       <div className="cms-map__controls">
-        <button type="button" onClick={() => zoomBy(1.6)} disabled={zoom >= MAX_ZOOM} aria-label="Zoom in">+</button>
-        <button type="button" onClick={() => zoomBy(1 / 1.6)} disabled={zoom <= 1} aria-label="Zoom out">−</button>
-        <button type="button" onClick={reset} disabled={zoom === 1 && !open} aria-label="Reset view">⊙</button>
+        <button type="button" onClick={() => zoom(1.6)} disabled={k >= K_MAX} aria-label="Zoom in">+</button>
+        <button type="button" onClick={() => zoom(1 / 1.6)} disabled={k <= K_MIN} aria-label="Zoom out">−</button>
+        <button type="button" onClick={reset} aria-label="Reset view" disabled={k === 1}>⌂</button>
       </div>
       <div className="cms-map__frame">
-        <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label="Live visitors across the United States">
-          <g
-            className="cms-map__world"
-            transform={`translate(${cx} ${cy}) scale(${zoom}) translate(${-cx} ${-cy})`}
-          >
-            <path d={land} className="cms-map__land" />
-            <path d={borders} className="cms-map__borders" />
-            {states.map((s, i) => {
-              const expanded = open === s.state;
-              const r = 4.5 + s.total * 0.5;
-              const delay = `${(i % 8) * 0.35}s`;
-              return (
-                <g key={s.key}>
-                  <g className="cms-map__pin" transform={`translate(${s.x} ${s.y}) scale(${inv})`}>
-                    <circle r={r + 7} className="cms-map__pulse" style={{ animationDelay: delay }} />
-                    <circle r={r} className="cms-map__dot" />
-                    {s.total > 1 && <text y={0.5} fontSize={r * 1.1} className="cms-map__num">{s.total}</text>}
-                    <circle
-                      r={r + 8}
-                      className="cms-map__hit"
-                      onClick={() => setOpen(expanded ? null : s.state)}
-                    >
-                      <title>{`${s.state} — ${s.total} active · click for cities`}</title>
-                    </circle>
-                  </g>
-                  {expanded && s.cities.map((c) => {
-                    const cr = 3 + c.n * 0.4;
-                    return (
-                      <g key={c.key} className="cms-map__pin" transform={`translate(${c.x} ${c.y}) scale(${inv})`}>
-                        <circle r={cr} className="cms-map__dot" />
-                        <circle r={cr + 8} className="cms-map__hit">
-                          <title>{`${c.name} — ${c.n} active`}</title>
-                        </circle>
-                      </g>
-                    );
-                  })}
+        <svg viewBox={US_VIEWBOX} role="img" aria-label="Map of live visitors across the United States">
+          <g className="cms-map__world" style={{ transform: `translate(${CX - k * x}px, ${CY - k * y}px) scale(${k})` }}>
+            <path d={US_NATION_D} className="cms-map__land" style={{ strokeWidth: 1 / k }} />
+            <path d={US_BORDERS_D} className="cms-map__borders" style={{ strokeWidth: 0.7 / k }} />
+            {pins.map((p, i) => (
+              <g key={p.label} transform={`translate(${p.x}, ${p.y})`}>
+                <g className="cms-map__pin" style={{ transform: `scale(${1 / k})` }}>
+                  <circle r={p.r + 7} className="cms-map__pulse" style={{ animationDelay: `${(i % 8) * 0.35}s` }} />
+                  <circle r={p.r} className="cms-map__dot" />
+                  {p.n > 1 ? <text y={0.5} className="cms-map__num" style={{ fontSize: p.r * 1.1 }}>{p.n}</text> : null}
+                  <circle r={p.r + 8} className="cms-map__hit" onClick={p.onClick}
+                    onMouseEnter={() => setTip({ label: p.label, at: toScreen(p) })}
+                    onMouseLeave={() => setTip(null)} />
                 </g>
-              );
-            })}
+              </g>
+            ))}
           </g>
         </svg>
+        {tip ? (
+          <div className="cms-tip cms-map__tip"
+            style={{ left: `${(tip.at[0] / 975) * 100}%`, top: `${(tip.at[1] / 610) * 100}%` }}>
+            <strong>{tip.label}</strong>
+          </div>
+        ) : null}
       </div>
       <span className="cms-map__legend">
-        {total > 0
-          ? `${total} active visitor${total === 1 ? "" : "s"} across ${states.length} state${states.length === 1 ? "" : "s"} · click a dot to see cities`
-          : "No live visitors right now. Pins appear here the moment someone opens the site."}
+        {total === 0
+          ? "No live visitors right now. Pins appear here the moment someone opens the site."
+          : cityMode
+            ? "Showing cities · zoom out for state totals"
+            : "One dot per state · zoom in to see cities"}
       </span>
     </div>
   );
